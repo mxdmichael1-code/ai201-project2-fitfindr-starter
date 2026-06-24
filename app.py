@@ -44,7 +44,63 @@ def handle_query(user_query: str, wardrobe_choice: str) -> tuple[str, str, str]:
            session["fit_card"].
     """
     # TODO: implement this function
-    return "Agent not yet implemented.", "", ""
+
+        # 1. Guard against empty query
+    if not user_query or not user_query.strip():
+        return (
+            "Please enter what kind of item you are looking for.",
+            "",
+            "",
+        )
+
+    # 2. Select wardrobe based on the radio button
+    if wardrobe_choice == "Empty wardrobe (new user)":
+        wardrobe = get_empty_wardrobe()
+    else:
+        wardrobe = get_example_wardrobe()
+
+    # 3. Run the planning loop
+    session = run_agent(user_query, wardrobe)
+
+    # 4. If the agent stopped early, show the error in the first panel
+        # 4. Format the selected listing for the first output panel
+    selected_item = session["selected_item"]
+
+    if selected_item:
+        listing_text = (
+            f"{selected_item.get('title', 'Untitled item')}\n"
+            f"Price: ${selected_item.get('price', 'N/A')}\n"
+            f"Platform: {selected_item.get('platform', 'N/A')}\n"
+            f"Condition: {selected_item.get('condition', 'N/A')}\n"
+            f"Size: {selected_item.get('size', 'N/A')}\n"
+            f"Category: {selected_item.get('category', 'N/A')}\n"
+            f"Colors: {', '.join(selected_item.get('colors', []))}\n\n"
+            f"{selected_item.get('description', '')}"
+        )
+    else:
+        listing_text = "No listing selected."
+
+    # 5. If the agent stopped before finding a listing, show error in first panel.
+    # If it already found a listing but Groq failed, keep the listing and show error in outfit panel.
+    if session["error"]:
+        if selected_item:
+            return (
+                listing_text,
+                session["error"],
+                "",
+            )
+        else:
+            return (
+                session["error"],
+                "",
+                "",
+            )
+
+    # 6. Map session values to the remaining output panels
+    outfit_suggestion = session["outfit_suggestion"] or ""
+    fit_card = session["fit_card"] or ""
+
+    return listing_text, outfit_suggestion, fit_card
 
 
 # ── interface ─────────────────────────────────────────────────────────────────
